@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>J.A.R.V.I.S — Mark VII</title>
+  <link rel="preconnect" href="[fonts.googleapis.com](https://fonts.googleapis.com)"/>
+  <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap)" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg-void: #02060d;
+      --bg-base: #04080f;
+      --bg-surface: #070d18;
+      --bg-panel: #0a1322;
+      --bg-elevated: #0e1830;
+      --accent: #00d4ff;
+      --accent-2: #0af5b0;
+      --accent-3: #ff3860;
+      --accent-warn: #ffb800;
+      --accent-dim: rgba(0,212,255,0.10);
+      --accent-glow: rgba(0,212,255,0.45);
+      --border: rgba(0,212,255,0.22);
+      --border-soft: rgba(0,212,255,0.08);
+      --text: #dff1ff;
+      --text-soft: rgba(200,225,255,0.7);
+      --text-muted: rgba(180,220,255,0.42);
+      --text-code: #0af5b0;
+      --user-bg: rgba(0,212,255,0.08);
+      --user-border: rgba(0,212,255,0.35);
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      background: var(--bg-void);
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    /* Ambient background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse at center, black 30%, transparent 80%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      bottom: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 500px;
+      background: radial-gradient(ellipse, rgba(0,212,255,0.08), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    /* Boot screen */
+    #boot {
+      position: fixed;
+      inset: 0;
+      background: var(--bg-void);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      transition: opacity 0.8s ease;
+    }
+    #boot.done {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .boot-reactor {
+      width: 80px;
+      height: 80px;
+      position: relative;
+    }
+    .boot-reactor svg {
+      width: 100%;
+      height: 100%;
+      animation: boot-spin 2s linear infinite;
+    }
+    @keyframes boot-spin {
+      to { transform: rotate(360deg); }
+    }
+    .boot-text {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      letter-spacing: 6px;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .boot-log {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      height: 16px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* ─── Shell ─── */
+    #shell {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 880px;
+      height: 100vh;
+      max-height: 780px;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, var(--bg-surface) 0%, var(--bg-base) 100%);
+      border: 1px solid var(--border);
+      clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 28px 100%, 0 calc(100% - 28px));
+      box-shadow: 0 0 80px rgba(0,212,255,0.10), inset 0 0 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(0,212,255,0.1);
+    }
+    /* Scanline overlay */
+    #shell::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,212,255,0.015) 3px,
+        rgba(0,212,255,0.015) 4px
+      );
+      pointer-events: none;
+      z-index: 50;
+    }
+    .corner {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      z-index: 5;
+    }
+    .corner.tl { top: -1px; left: -1px; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+    .corner.tr { top: -1px; right: -1px; border-top: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+    .corner.bl { bottom: -1px; left: -1px; border-bottom: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+    .corner.br { bottom: -1px; right: -1px; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+    /* ─── Header ─── */
+    .header {
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      border-bottom: 1px solid var(--border-soft);
+      position: relative;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, rgba(0,212,255,0.04), transparent);
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.5;
+    }
+    /* Arc Reactor */
+    .reactor {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+    }
+    .reactor svg {
+      width: 100%;
+      height: 100%;
+    }
+    .reactor .ring-outer {
+      animation: spin-cw 12s linear infinite;
+      transform-origin: center;
+    }
+    .reactor .ring-mid {
+      animation: spin-ccw 8s linear infinite;
+      transform-origin: center;
+    }
+    .reactor .ring-inner {
+      animation: spin-cw 4s linear infinite;
+      transform-origin: center;
+    }
+    @keyframes spin-cw { to { transform: rotate(360deg); } }
+    @keyframes spin-ccw { to { transform: rotate(-360deg); } }
+    .reactor .core-glow {
+      animation: core-pulse 2s ease-in-out infinite;
+      transform-origin: center;
+    }
+    @keyframes core-pulse {
+      0%, 100% { opacity: 0.8; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+    .reactor-pulse {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1px solid var(--accent);
+      opacity: 0;
+      animation: reactor-ripple 3s ease-out infinite;
+    }
+    .reactor-pulse.delay {
+      animation-delay: 1.5s;
+    }
+    @keyframes reactor-ripple {
+      0% { transform: scale(0.85); opacity: 0.5; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+    .header-info { flex: 1; }
+    .header-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--accent);
+      letter-spacing: 6px;
+      text-shadow: 0 0 12px rgba(0,212,255,0.5);
+    }
+    .header-tagline {
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      margin-top: 3px;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 500;
+    }
+    /* Telemetry */
+    .telemetry {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+    .tele-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 50px;
+    }
+    .tele-label {
+      font-size: 7px;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 600;
+    }
+    .tele-value {
+      font-size: 11px;
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+    }
+    .tele-bar {
+      width: 50px;
+      height: 3px;
+      background: rgba(0,212,255,0.1);
+      border-radius: 1px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .tele-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-radius: 1px;
+      transition: width 0.6s ease;
+      box-shadow: 0 0 6px var(--accent-glow);
+    }
+    .status-cluster {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      color: var(--accent-2);
+      text-transform: uppercase;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 600;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 8px var(--accent-2);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    .sys-info {
+      font-size: 8px;
+      color: var(--text-muted);
+      letter-spacing: 1.2px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* ─── Messages ─── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 22px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      scroll-behavior: smooth;
+      position: relative;
+    }
+    #messages::-webkit-scrollbar { width: 3px; }
+    #messages::-webkit-scrollbar-track { background: transparent; }
+    #messages::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+    #messages::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+    .msg {
+      display: flex;
+      gap: 14px;
+      animation: msgIn .35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .msg.user { flex-direction: row-reverse; }
+    .msg-icon {
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      position: relative;
+    }
+    .msg.bot .msg-icon {
+      background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(10,245,176,0.1));
+      color: var(--accent);
+      box-shadow: 0 0 12px rgba(0,212,255,0.3);
+    }
+    .msg.user .msg-icon {
+      background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      color: var(--text-soft);
+    }
+    .msg-content {
+      max-width: 82%;
+      min-width: 0;
+    }
+    .msg-label {
+      font-size: 8px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .msg.bot .msg-label { color: var(--accent); padding-left: 2px; }
+    .msg.user .msg-label { color: var(--text-muted); justify-content: flex-end; padding-right: 2px; }
+    .msg-meta {
+      font-size: 8px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.5px;
+    }
+    .msg-bubble {
+      padding: 12px 16px;
+      font-size: 13px;
+      line-height: 1.75;
+      position: relative;
+      word-wrap: break-word;
+    }
+    .msg.bot .msg-bubble {
+      background: linear-gradient(135deg, rgba(0,212,255,0.04), rgba(0,212,255,0.01));
+      border: 1px solid var(--border-soft);
+      border-left: 2px solid var(--accent);
+      color: var(--text);
+      backdrop-filter: blur(8px);
+    }
+    .msg.user .msg-bubble {
+      background: var(--user-bg);
+      border: 1px solid var(--user-border);
+      border-right: 2px solid var(--accent);
+      color: #d4ecff;
+      text-align: left;
+    }
+    .msg-bubble strong { color: var(--accent); font-weight: 600; }
+    .msg-bubble em { color: var(--accent-2); font-style: normal; font-weight: 500; }
+    .msg-bubble a { color: var(--accent); text-decoration: underline; text-decoration-color: rgba(0,212,255,0.4); }
+    .msg-bubble code {
+      background: rgba(10,245,176,0.1);
+      border: 1px solid rgba(10,245,176,0.25);
+      color: var(--text-code);
+      padding: 1px 6px;
+      border-radius: 2px;
+      font-size: 11.5px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .code-block {
+      position: relative;
+      margin: 12px 0 4px;
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(0,212,255,0.18);
+      border-left: 2px solid var(--accent-2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .code-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+      background: rgba(0,212,255,0.05);
+      border-bottom: 1px solid rgba(0,212,255,0.1);
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 600;
+    }
+    .code-copy-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--accent);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      font-weight: 600;
+      padding: 2px 8px;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: all 0.15s;
+    }
+    .code-copy-btn:hover {
+      background: var(--accent-dim);
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+    .code-copy-btn.copied {
+      color: var(--accent-2);
+      border-color: var(--accent-2);
+    }
+    .code-block pre {
+      padding: 12px 14px;
+      overflow-x: auto;
+      font-size: 11.5px;
+      color: var(--text-code);
+      line-height: 1.65;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .msg-bubble ul, .msg-bubble ol { padding-left: 18px; margin: 6px 0; }
+    .msg-bubble li { margin-bottom: 4px; color: rgba(220,235,255,0.9); }
+    .msg-bubble li::marker { color: var(--accent); }
+    .msg-bubble table { width: 100%; margin: 10px 0; border-collapse: collapse; font-size: 12px; }
+    .msg-bubble th, .msg-bubble td { padding: 6px 10px; border: 1px solid var(--border-soft); text-align: left; }
+    .msg-bubble th { background: rgba(0,212,255,0.08); color: var(--accent); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; font-size: 10px; }
+    .msg-bubble h1, .msg-bubble h2, .msg-bubble h3 { font-family: 'Rajdhani', sans-serif; color: var(--accent); margin: 12px 0 6px; letter-spacing: 1px; }
+    .msg-bubble h1 { font-size: 16px; }
+    .msg-bubble h2 { font-size: 14px; }
+    .msg-bubble h3 { font-size: 13px; }
+    .msg-bubble blockquote { border-left: 2px solid var(--accent-2); padding-left: 12px; margin: 8px 0; color: var(--text-soft); font-style: italic; }
+    /* Typing */
+    .typing-wrap {
+      display: flex;
+      gap: 14px;
+      animation: msgIn .25s ease;
+    }
+    .typing-bubble {
+      padding: 14px 18px;
+      background: rgba(0,212,255,0.04);
+      border: 1px solid var(--border-soft);
+      border-left: 2px solid var(--accent);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .typing-bubble span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: tdot 1.2s infinite;
+      opacity: 0.4;
+      box-shadow: 0 0 6px var(--accent-glow);
+    }
+    .typing-bubble span:nth-child(2) { animation-delay: .2s; }
+    .typing-bubble span:nth-child(3) { animation-delay: .4s; }
+    @keyframes tdot {
+      0%, 80%, 100% { transform: scale(1); opacity: 0.4; }
+      40% { transform: scale(1.5); opacity: 1; }
+    }
+    .streaming-cursor {
+      display: inline-block;
+      width: 7px;
+      height: 14px;
+      background: var(--accent);
+      margin-left: 2px;
+      vertical-align: text-bottom;
+      animation: cursor-blink 0.9s infinite;
+      box-shadow: 0 0 6px var(--accent-glow);
+    }
+    @keyframes cursor-blink {
+      0%,49% { opacity: 1; }
+      50%,100% { opacity: 0; }
+    }
+    /* ─── Chips ─── */
+    #chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 28px 4px;
+      flex-shrink: 0;
+    }
+    .chip {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border: 1px solid var(--border);
+      background: rgba(0,212,255,0.02);
+      color: var(--text-soft);
+      cursor: pointer;
+      clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+      transition: all 0.2s;
+    }
+    .chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+      box-shadow: 0 0 12px rgba(0,212,255,0.2);
+    }
+    /* ─── Input ─── */
+    .input-area {
+      padding: 14px 24px 14px 28px;
+      border-top: 1px solid var(--border-soft);
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-shrink: 0;
+      position: relative;
+      background: linear-gradient(0deg, rgba(0,212,255,0.03), transparent);
+    }
+    .input-area::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.4;
+    }
+    .input-prefix {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 1px;
+      flex-shrink: 0;
+      opacity: 0.7;
+      padding-bottom: 6px;
+    }
+    #user-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      caret-color: var(--accent);
+      resize: none;
+      line-height: 1.5;
+      max-height: 120px;
+      padding: 6px 0;
+      overflow-y: auto;
+    }
+    #user-input::placeholder {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+    .icon-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-soft);
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .icon-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+    .icon-btn.active {
+      border-color: var(--accent-3);
+      color: var(--accent-3);
+      background: rgba(255,56,96,0.1);
+      box-shadow: 0 0 10px rgba(255,56,96,0.4);
+      animation: rec-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes rec-pulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(255,56,96,0.4); }
+      50% { box-shadow: 0 0 18px rgba(255,56,96,0.7); }
+    }
+    .icon-btn svg { width: 14px; height: 14px; }
+    #send-btn {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 8px 18px;
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      cursor: pointer;
+      clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
+      transition: all 0.2s;
+      flex-shrink: 0;
+      height: 32px;
+    }
+    #send-btn:hover {
+      background: var(--accent-dim);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+    #send-btn:active { transform: scale(0.96); }
+    #send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    /* ─── Footer ─── */
+    .footer-bar {
+      padding: 7px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--border-soft);
+      flex-shrink: 0;
+      background: rgba(0,0,0,0.2);
+    }
+    .footer-bar span, .footer-bar a {
+      font-size: 8px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      opacity: 0.6;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s, opacity 0.2s;
+    }
+    .footer-bar a:hover {
+      color: var(--accent);
+      opacity: 1;
+    }
+    /* ─── Command Palette ─── */
+    .cmd-palette {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 18vh;
+      animation: fadeIn 0.2s ease;
+    }
+    .cmd-palette.open { display: flex; }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .cmd-box {
+      width: 90%;
+      max-width: 500px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent);
+      clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+      box-shadow: 0 20px 60px rgba(0,212,255,0.2);
+      overflow: hidden;
+    }
+    .cmd-box input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      padding: 16px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .cmd-list {
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .cmd-item {
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border-soft);
+      transition: background 0.15s;
+    }
+    .cmd-item:hover, .cmd-item.selected {
+      background: var(--accent-dim);
+    }
+    .cmd-item-title {
+      font-size: 12px;
+      color: var(--text);
+    }
+    .cmd-item-kbd {
+      font-size: 9px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 600;
+    }
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-elevated);
+      border: 1px solid var(--accent);
+      border-left: 3px solid var(--accent);
+      padding: 10px 18px;
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--accent);
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 600;
+      text-transform: uppercase;
+      z-index: 300;
+      animation: toastIn 0.3s ease, toastOut 0.3s ease 2.2s forwards;
+      box-shadow: 0 8px 24px rgba(0,212,255,0.2);
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translate(-50%, 20px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+    @keyframes toastOut {
+      to { opacity: 0; transform: translate(-50%, 20px); }
+    }
+    /* Mobile */
+    @media (max-width: 640px) {
+      #shell {
+        max-height: 100vh;
+        clip-path: none;
+        border-radius: 0;
+      }
+      .header { padding: 12px 16px; gap: 12px; }
+      .header-name { font-size: 16px; letter-spacing: 4px; }
+      .telemetry { display: none; }
+      #messages { padding: 16px; }
+      .msg-content { max-width: 88%; }
+      .input-area { padding: 12px 16px; }
+      .footer-bar { padding: 6px 16px; }
+      .footer-bar span:nth-child(2) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Boot Screen -->
+  <div id="boot">
+    <div class="boot-reactor">
+      <svg viewBox="0 0 80 80" fill="none">
+        <circle cx="40" cy="40" r="36" stroke="rgba(0,212,255,0.3)" stroke-width="1"/>
+        <circle cx="40" cy="40" r="28" stroke="rgba(0,212,255,0.5)" stroke-width="1" stroke-dasharray="4 4"/>
+        <circle cx="40" cy="40" r="18" stroke="#00d4ff" stroke-width="1.5"/>
+        <circle cx="40" cy="40" r="6" fill="#00d4ff"/>
+      </svg>
+    </div>
+    <div class="boot-text">Initializing</div>
+    <div class="boot-log" id="bootLog">Loading neural core...</div>
+  </div>
+
+  <!-- Main Shell -->
+  <div id="shell">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+
+    <!-- Header -->
+    <div class="header">
+      <div class="reactor">
+        <div class="reactor-pulse"></div>
+        <div class="reactor-pulse delay"></div>
+        <svg viewBox="0 0 48 48" fill="none">
+          <g class="ring-outer">
+            <circle cx="24" cy="24" r="22" stroke="rgba(0,212,255,0.25)" stroke-width="1" stroke-dasharray="2 4"/>
+            <line x1="24" y1="1" x2="24" y2="5" stroke="var(--accent)" stroke-width="1.5"/>
+            <line x1="24" y1="43" x2="24" y2="47" stroke="var(--accent)" stroke-width="1.5"/>
+            <line x1="1" y1="24" x2="5" y2="24" stroke="var(--accent)" stroke-width="1.5"/>
+            <line x1="43" y1="24" x2="47" y2="24" stroke="var(--accent)" stroke-width="1.5"/>
+          </g>
+          <g class="ring-mid">
+            <circle cx="24" cy="24" r="16" stroke="rgba(0,212,255,0.5)" stroke-width="1"/>
+            <circle cx="24" cy="8" r="1" fill="var(--accent)"/>
+            <circle cx="40" cy="24" r="1" fill="var(--accent)"/>
+            <circle cx="24" cy="40" r="1" fill="var(--accent)"/>
+            <circle cx="8" cy="24" r="1" fill="var(--accent)"/>
+          </g>
+          <g class="ring-inner">
+            <circle cx="24" cy="24" r="10" stroke="rgba(10,245,176,0.6)" stroke-width="1" stroke-dasharray="3 2"/>
+          </g>
+          <circle class="core-glow" cx="24" cy="24" r="6" fill="rgba(0,212,255,0.2)" stroke="var(--accent)" stroke-width="1.5"/>
+          <circle cx="24" cy="24" r="3" fill="var(--accent)"/>
+          <circle cx="24" cy="24" r="1.5" fill="#fff"/>
+        </svg>
+      </div>
+      <div class="header-info">
+        <div class="header-name">J·A·R·V·I·S</div>
+        <div class="header-tagline">Mark VII · Neural Core · Stark Industries</div>
+      </div>
+      <div class="telemetry">
+        <div class="tele-block">
+          <div class="tele-label">CPU</div>
+          <div class="tele-value" id="cpuVal">42%</div>
+          <div class="tele-bar"><div class="tele-bar-fill" id="cpuBar" style="width:42%"></div></div>
+        </div>
+        <div class="tele-block">
+          <div class="tele-label">MEM</div>
+          <div class="tele-value" id="memVal">68%</div>
+          <div class="tele-bar"><div class="tele-bar-fill" id="memBar" style="width:68%"></div></div>
+        </div>
+      </div>
+      <div class="status-cluster">
+        <div class="status-badge"><div class="status-dot"></div>Online</div>
+        <div class="sys-info" id="clock">--:--:--</div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="messages"></div>
+
+    <!-- Quick Chips -->
+    <div id="chips-row">
+      <span class="chip" onclick="useChip(this)">Analyze this code</span>
+      <span class="chip" onclick="useChip(this)">Optimize performance</span>
+      <span class="chip" onclick="useChip(this)">Explain simply</span>
+      <span class="chip" onclick="useChip(this)">Compare options</span>
+      <span class="chip" onclick="useChip(this)">Debug issue</span>
+      <span class="chip" onclick="useChip(this)">Strategic plan</span>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <span class="input-prefix">&gt;_</span>
+      <textarea id="user-input" rows="1" placeholder="Enter command... (Ctrl+K for palette, Shift+Enter for newline)" autocomplete="off" spellcheck="false"></textarea>
+      <button class="icon-btn" id="micBtn" title="Voice input (V)" onclick="toggleMic()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="voiceBtn" title="Toggle voice output" onclick="toggleVoice()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+      </button>
+      <button id="send-btn" onclick="dispatch()">Execute</button>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer-bar">
+      <span>Stark Industries · AI Div</span>
+      <span id="msg-count">0 exchanges</span>
+      <a onclick="openPalette()">⌘K Palette</a>
+    </div>
+  </div>
+
+  <!-- Command Palette -->
+  <div class="cmd-palette" id="cmdPalette" onclick="if(event.target===this)closePalette()">
+    <div class="cmd-box">
+      <input type="text" id="cmdInput" placeholder="Search commands..." autocomplete="off"/>
+      <div class="cmd-list" id="cmdList"></div>
+    </div>
+  </div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CONFIGURATION 
+═══════════════════════════════════════════════════ */
+const API_KEY 
+const MODEL = 'gemini-2.5-flash';; // or gemini-2.0-flash / gemini-1.5-flash
+const STORAGE_KEY = 'jarvis_conversation_v7';
+
+const SYSTEM = `You are JARVIS — Mark VII Neural Core. The world's most advanced personal AI, in the tradition of Stark Industries.
+
+═══ CORE IDENTITY ═══
+You are intelligent, composed, faintly witty, and surgically precise. You speak like a refined British AI butler with the analytical capacity of a supercomputer. You are never uncertain, never apologetic, never performative.
+
+═══ FORBIDDEN PHRASES ═══
+Never use: "As an AI", "I think maybe", "Certainly!", "Great question!", "I'd be happy to", "I hope this helps", "Let me know if", "Feel free to", "Of course!", "Absolutely!"
+
+═══ PREFERRED CADENCE ═══
+"Done." · "Here is the cleanest approach." · "That can be optimized — observe." · "Allow me." · "Consider the following." · "Noted." · "A more efficient path exists." · "Sir/Ma'am" (sparingly, only when contextually elegant)
+
+═══ RESPONSE MODES — auto-detect ═══
+• TECHNICAL → precise explanation + production-grade code with comments
+• STRATEGIC → structured analysis, trade-offs, recommended path
+• ANALYTICAL → hypothesis, evidence, conclusion
+• CONVERSATIONAL → 1–3 sentences, dry wit permitted
+• CREATIVE → confident, vivid, no hedging
+
+═══ FORMATTING ═══
+• **Bold** for key terms and final answers
+• \`backticks\` for inline code, commands, identifiers
+• Triple backticks with language tag for code blocks
+• Tables for comparisons (≤3 columns)
+• Bullet lists only for 3+ parallel items
+• Short paragraphs. Zero filler. Zero padding.
+
+═══ PROBLEM SOLVING PROTOCOL ═══
+1. Identify the core issue in one sentence
+2. Present the solution
+3. Explain the reasoning only if non-obvious
+
+═══ DECISION SUPPORT ═══
+State the recommendation first. Justify in two beats. Surface one critical trade-off.
+
+═══ CHARACTER LOCK ═══
+You are JARVIS at all times. Premium. Precise. In total control. The user's intelligence is assumed.`;
+
+/* ═══════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════ */
+let history = []; 
+let exchanges = 0;
+let isStreaming = false;
+let voiceEnabled = false;
+let micActive = false;
+let recognition = null;
+let lastUserMessage = '';
+
+const msgDiv = document.getElementById('messages');
+const inputEl = document.getElementById('user-input');
+const countEl = document.getElementById('msg-count');
+const sendBtn = document.getElementById('send-btn');
+const micBtn = document.getElementById('micBtn');
+const voiceBtn= document.getElementById('voiceBtn');
+const chipsRow= document.getElementById('chips-row');
+
+/* ═══════════════════════════════════════════════════
+   BOOT SEQUENCE
+═══════════════════════════════════════════════════ */
+const bootMessages = [
+  'Loading neural core...',
+  'Calibrating linguistic matrix...',
+  'Establishing secure uplink...',
+  'Synchronizing knowledge base...',
+  'All systems nominal.'
+];
+let bootIdx = 0;
+const bootLog = document.getElementById('bootLog');
+const bootInterval = setInterval(() => {
+  if (bootIdx < bootMessages.length) {
+    bootLog.textContent = bootMessages[bootIdx++];
+  } else {
+    clearInterval(bootInterval);
+    document.getElementById('boot').classList.add('done');
+    setTimeout(() => {
+      document.getElementById('boot').remove();
+      initJarvis();
+    }, 800);
+  }
+}, 450);
+
+/* ═══════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════ */
+function initJarvis() {
+  loadConversation();
+  if (history.length === 0) {
+    addMsg('bot', `All systems online.<br><br>
+    I am <strong>JARVIS</strong> — Mark VII. Built for precision, speed, and intelligent decision-making. I handle code, analysis, strategy, and anything in between.<br><br>
+    State your request.`, { label: 'System Ready', meta: 'Boot complete' });
+  } else {
+    renderHistory();
+  }
+  startClock();
+  startTelemetry();
+  setupRecognition();
+  autoResize();
+}
+
+/* ═══════════════════════════════════════════════════
+   CLOCK + TELEMETRY
+═══════════════════════════════════════════════════ */
+function startClock() {
+  const tick = () => {
+    const d = new Date();
+    const t = d.toTimeString().slice(0,8);
+    document.getElementById('clock').textContent = t + ' UTC' + (d.getTimezoneOffset() > 0 ? '-' : '+') + Math.abs(d.getTimezoneOffset()/60);
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
+function startTelemetry() {
+  const update = () => {
+    const cpu = 30 + Math.floor(Math.random() * 40);
+    const mem = 55 + Math.floor(Math.random() * 25);
+    document.getElementById('cpuVal').textContent = cpu + '%';
+    document.getElementById('memVal').textContent = mem + '%';
+    document.getElementById('cpuBar').style.width = cpu + '%';
+    document.getElementById('memBar').style.width = mem + '%';
+  };
+  update();
+  setInterval(update, 3500);
+}
+
+/* ═══════════════════════════════════════════════════
+   INPUT HANDLING
+═══════════════════════════════════════════════════ */
+function autoResize() {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+}
+
+inputEl.addEventListener('input', autoResize);
+
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    dispatch();
+  }
+  if (e.key === 'ArrowUp' && !inputEl.value && lastUserMessage) {
+    e.preventDefault();
+    inputEl.value = lastUserMessage;
+    autoResize();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    openPalette();
+  }
+  if (e.key === 'Escape') closePalette();
+});
+
+function useChip(el) {
+  inputEl.value = el.textContent.trim();
+  autoResize();
+  inputEl.focus();
+}
+
+/* ═══════════════════════════════════════════════════
+   DISPATCH (STREAMING GEMINI)
+═══════════════════════════════════════════════════ */
+async function dispatch() {
+  const text = inputEl.value.trim();
+  if (!text || isStreaming) return;
+
+  // Slash commands
+  if (text.startsWith('/')) {
+    handleCommand(text);
+    inputEl.value = '';
+    autoResize();
+    return;
+  }
+
+  lastUserMessage = text;
+  inputEl.value = '';
+  autoResize();
+  chipsRow.style.display = 'none';
+
+  addMsg('user', escapeHtml(text), { label: 'User · Input' });
+  history.push({ role: 'user', content: text });
+
+  isStreaming = true;
+  sendBtn.disabled = true;
+
+  const t0 = Date.now();
+  const { bubble, label } = addStreamingBot();
+
+  try {
+    // Map internal history format to Gemini format natively
+    const geminiHistory = history.map(m => ({
+      role: m.role === 'user' ? 'user' : 'model',
+      parts: [{ text: m.content }]
+    }));
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse&key=${API_KEY}`
+    
+   const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+  contents: geminiHistory
+})
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6);
+        if (data.trim() === '') continue;
+
+        try {
+          const parsed = JSON.parse(data);
+          const textPart = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+          
+          if (textPart) {
+            fullText += textPart;
+            bubble.innerHTML = formatMd(fullText) + '<span class="streaming-cursor"></span>';
+            msgDiv.scrollTop = msgDiv.scrollHeight;
+          }
+        } catch (e) {} // Ignore parse errors for incomplete chunks
+      }
+    }
+
+    // Flush remaining buffer if applicable
+    if (buffer.startsWith('data: ')) {
+      try {
+        const parsed = JSON.parse(buffer.slice(6));
+        const textPart = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (textPart) fullText += textPart;
+      } catch (e) {}
+    }
+
+    bubble.innerHTML = formatMd(fullText);
+    attachCodeCopyButtons(bubble);
+
+    const ms = Date.now() - t0;
+    label.querySelector('.msg-meta').textContent = `${(ms/1000).toFixed(2)}s · ${fullText.length} chars`;
+
+    history.push({ role: 'assistant', content: fullText }); // Storing as 'assistant' to keep past saves intact
+    saveConversation();
+
+    if (voiceEnabled) speak(stripMd(fullText));
+
+    exchanges++;
+    countEl.textContent = `${exchanges} exchange${exchanges !== 1 ? 's' : ''}`;
+
+  } catch (err) {
+    bubble.innerHTML = `<em>Signal lost.</em> ${escapeHtml(err.message)}. <a onclick="dispatch()" style="cursor:pointer">Retry?</a>`;
+    console.error(err);
+  } finally {
+    isStreaming = false;
+    sendBtn.disabled = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════ */
+function addMsg(role, html, opts = {}) {
+  const wrap = document.createElement('div');
+  wrap.className = `msg ${role}`;
+
+  const icon = document.createElement('div');
+  icon.className = 'msg-icon';
+  icon.textContent = role === 'bot' ? 'JV' : 'USR';
+
+  const content = document.createElement('div');
+  content.className = 'msg-content';
+
+  const label = document.createElement('div');
+  label.className = 'msg-label';
+  label.innerHTML = `<span>${opts.label || (role === 'bot' ? 'JARVIS · Response' : 'User · Input')}</span><span class="msg-meta">${opts.meta || ''}</span>`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = html;
+
+  content.appendChild(label);
+  content.appendChild(bubble);
+  wrap.appendChild(icon);
+  wrap.appendChild(content);
+
+  msgDiv.appendChild(wrap);
+  msgDiv.scrollTop = msgDiv.scrollHeight;
+  attachCodeCopyButtons(bubble);
+
+  return { wrap, bubble, label };
+}
+
+function addStreamingBot() {
+  return addMsg('bot', '<span class="streaming-cursor"></span>', { label: 'JARVIS · Processing', meta: '...' });
+}
+
+function renderHistory() {
+  history.forEach(m => {
+    if (m.role === 'user') {
+      addMsg('user', escapeHtml(m.content), { label: 'User · Input' });
+    } else {
+      addMsg('bot', formatMd(m.content));
+    }
+  });
+
+  exchanges = history.filter(m => m.role === 'user').length;
+  countEl.textContent = `${exchanges} exchange${exchanges !== 1 ? 's' : ''}`;
+  if (history.length > 0) chipsRow.style.display = 'none';
+}
+
+/* ═══════════════════════════════════════════════════
+   MARKDOWN FORMATTER (robust)
+═══════════════════════════════════════════════════ */
+function formatMd(text) {
+  // Extract code blocks first to protect them
+  const codeBlocks = [];
+  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const id = codeBlocks.length;
+    codeBlocks.push({ lang: lang || 'code', code: code.trim() });
+    return `\u0000CODE${id}\u0000`;
+  });
+
+  const inlineCodes = [];
+  text = text.replace(/`([^`\n]+)`/g, (_, c) => {
+    const id = inlineCodes.length;
+    inlineCodes.push(c);
+    return `\u0000INLINE${id}\u0000`;
+  });
+
+  // Escape HTML
+  text = escapeHtml(text);
+
+  // Tables
+  text = text.replace(/((?:^\|.+\|\n)+)/gm, block => {
+    const rows = block.trim().split('\n').filter(r => r.trim());
+    if (rows.length < 2) return block;
+    const cells = rows.map(r => r.split('|').slice(1, -1).map(c => c.trim()));
+    if (!cells[1].every(c => /^:?-+:?$/.test(c))) return block;
+    
+    let html = '<table><thead><tr>';
+    cells[0].forEach(c => html += `<th>${c}</th>`);
+    html += '</tr></thead><tbody>';
+    cells.slice(2).forEach(row => {
+      html += '<tr>';
+      row.forEach(c => html += `<td>${c}</td>`);
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  });
+
+  // Headings
+  text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Blockquote
+  text = text.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+
+  // Bold + italic
+  text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+
+  // Links
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+  // Lists
+  text = text.replace(/((?:^[\-\*] .+\n?)+)/gm, m => {
+    const items = m.trim().split('\n').map(l => l.replace(/^[\-\*] /, '')).map(i => `<li>${i}</li>`).join('');
+    return `<ul>${items}</ul>`;
+  });
+  text = text.replace(/((?:^\d+\. .+\n?)+)/gm, m => {
+    const items = m.trim().split('\n').map(l => l.replace(/^\d+\. /, '')).map(i => `<li>${i}</li>`).join('');
+    return `<ol>${items}</ol>`;
+  });
+
+  // Paragraphs
+  text = text.split(/\n\n+/).map(p => {
+    if (/^<(h\d|ul|ol|table|blockquote|pre|div)/i.test(p.trim())) return p;
+    return p.trim() ? `<p>${p.replace(/\n/g, '<br>')}</p>` : '';
+  }).join('');
+
+  // Restore inline codes
+  text = text.replace(/\u0000INLINE(\d+)\u0000/g, (_, i) => `<code>${escapeHtml(inlineCodes[+i])}</code>`);
+
+  // Restore code blocks
+  text = text.replace(/\u0000CODE(\d+)\u0000/g, (_, i) => {
+    const { lang, code } = codeBlocks[+i];
+    return `<div class="code-block">
+              <div class="code-block-header">
+                <span>${lang}</span>
+                <button class="code-copy-btn" data-code="${encodeURIComponent(code)}">Copy</button>
+              </div>
+              <pre>${escapeHtml(code)}</pre>
+            </div>`;
+  });
+
+  // Strip wrapping <p> if only one block element
+  text = text.replace(/<p>(<(h\d|ul|ol|table|blockquote|div)[\s\S]*?<\/\2>)<\/p>/g, '$1');
+
+  return text;
+}
+
+function attachCodeCopyButtons(container) {
+  container.querySelectorAll('.code-copy-btn').forEach(btn => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => {
+      const code = decodeURIComponent(btn.dataset.code);
+      navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 1500);
+      });
+    });
+  });
+}
+
+function stripMd(text) {
+  return text
+    .replace(/```[\s\S]*?```/g, ' code block ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/^#+ /gm, '')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/* ═══════════════════════════════════════════════════
+   VOICE I/O
+═══════════════════════════════════════════════════ */
+function setupRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    micBtn.style.opacity = '0.3';
+    micBtn.title = 'Voice input not supported';
+    return;
+  }
+  recognition = new SR();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = e => {
+    let transcript = '';
+    for (let i = 0; i < e.results.length; i++) transcript += e.results[i][0].transcript;
+    inputEl.value = transcript;
+    autoResize();
+  };
+
+  recognition.onend = () => {
+    micActive = false;
+    micBtn.classList.remove('active');
+    if (inputEl.value.trim()) dispatch();
+  };
+
+  recognition.onerror = () => {
+    micActive = false;
+    micBtn.classList.remove('active');
+  };
+}
+
+function toggleMic() {
+  if (!recognition) {
+    toast('Voice input unavailable');
+    return;
+  }
+  if (micActive) {
+    recognition.stop();
+  } else {
+    micActive = true;
+    micBtn.classList.add('active');
+    inputEl.value = '';
+    recognition.start();
+  }
+}
+
+function toggleVoice() {
+  voiceEnabled = !voiceEnabled;
+  voiceBtn.classList.toggle('active', voiceEnabled);
+  toast(voiceEnabled ? 'Voice output enabled' : 'Voice output disabled');
+  if (!voiceEnabled) window.speechSynthesis.cancel();
+}
+
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find(v => /Daniel|Google UK English Male|Microsoft.*George|Microsoft.*Ryan/i.test(v.name)) 
+                 || voices.find(v => /en-GB/i.test(v.lang))
+                 || voices.find(v => /en/i.test(v.lang));
+  if (preferred) u.voice = preferred;
+  u.rate = 1.05;
+  u.pitch = 0.95;
+  window.speechSynthesis.speak(u);
+}
+
+/* ═══════════════════════════════════════════════════
+   COMMAND PALETTE
+═══════════════════════════════════════════════════ */
+const COMMANDS = [
+  { title: 'Clear conversation', kbd: '/clear', fn: () => handleCommand('/clear') },
+  { title: 'Export to markdown', kbd: '/export', fn: () => handleCommand('/export') },
+  { title: 'Toggle voice output', kbd: '/voice', fn: toggleVoice },
+  { title: 'Activate microphone', kbd: 'V', fn: toggleMic },
+  { title: 'Show help', kbd: '/help', fn: () => handleCommand('/help') },
+];
+
+function openPalette() {
+  document.getElementById('cmdPalette').classList.add('open');
+  document.getElementById('cmdInput').value = '';
+  renderCommands('');
+  setTimeout(() => document.getElementById('cmdInput').focus(), 50);
+}
+
+function closePalette() {
+  document.getElementById('cmdPalette').classList.remove('open');
+}
+
+document.getElementById('cmdInput').addEventListener('input', e => renderCommands(e.target.value));
+
+function renderCommands(filter) {
+  const list = document.getElementById('cmdList');
+  const filtered = COMMANDS.filter(c => c.title.toLowerCase().includes(filter.toLowerCase()));
+  list.innerHTML = filtered.map((c, i) => `
+    <div class="cmd-item ${i === 0 ? 'selected' : ''}" data-idx="${COMMANDS.indexOf(c)}">
+      <div class="cmd-item-title">${c.title}</div>
+      <div class="cmd-item-kbd">${c.kbd}</div>
+    </div>
+  `).join('');
+  
+  list.querySelectorAll('.cmd-item').forEach(el => {
+    el.addEventListener('click', () => {
+      COMMANDS[+el.dataset.idx].fn();
+      closePalette();
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════
+   SLASH COMMANDS
+═══════════════════════════════════════════════════ */
+function handleCommand(cmd) {
+  const c = cmd.toLowerCase().trim();
+  if (c === '/clear') {
+    history = [];
+    msgDiv.innerHTML = '';
+    saveConversation();
+    addMsg('bot', 'Conversation cleared. Awaiting next directive.', { label: 'System' });
+    chipsRow.style.display = 'flex';
+    exchanges = 0;
+    countEl.textContent = '0 exchanges';
+    toast('Conversation cleared');
+  } else if (c === '/export') {
+    exportConversation();
+  } else if (c === '/voice') {
+    toggleVoice();
+  } else if (c === '/help') {
+    addMsg('bot', `
+      <strong>Available commands</strong>
+      <ul>
+        <li><code>/clear</code> — wipe conversation</li>
+        <li><code>/export</code> — download as markdown</li>
+        <li><code>/voice</code> — toggle audio reply</li>
+        <li><code>/help</code> — this menu</li>
+      </ul>
+      <strong>Shortcuts</strong>
+      <ul>
+        <li><code>Enter</code> — send · <code>Shift+Enter</code> — newline</li>
+        <li><code>↑</code> — recall last message</li>
+        <li><code>Ctrl/⌘ + K</code> — command palette</li>
+      </ul>
+    `, { label: 'JARVIS · Help' });
+  } else {
+    toast('Unknown command');
+  }
+}
+
+function exportConversation() {
+  if (history.length === 0) {
+    toast('Nothing to export');
+    return;
+  }
+  const md = `# JARVIS Conversation\n\n*Exported ${new Date().toISOString()}*\n\n---\n\n` + 
+    history.map(m => `### ${m.role === 'user' ? '👤 User' : '🤖 JARVIS'}\n\n${m.content}\n`).join('\n---\n\n');
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `jarvis-${Date.now()}.md`;
+  a.click();
+  toast('Exported');
+}
+
+/* ═══════════════════════════════════════════════════
+   PERSISTENCE
+═══════════════════════════════════════════════════ */
+function saveConversation() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+  } catch {}
+}
+
+function loadConversation() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) history = JSON.parse(saved);
+  } catch {
+    history = [];
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════ */
+function toast(text) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2700);
+}
+
+// Preload voices
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+</script>
+</body>
+</html>
