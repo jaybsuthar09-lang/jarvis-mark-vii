@@ -1416,12 +1416,16 @@ function speak(text) {
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v => /Daniel|Google UK English Male|Microsoft.*George|Microsoft.*Ryan/i.test(v.name)) 
-                 || voices.find(v => /en-GB/i.test(v.lang))
-                 || voices.find(v => /en/i.test(v.lang));
+  const preferred =
+    voices.find(v => v.name.includes("Google UK English Male")) ||
+    voices.find(v => v.name.includes("Microsoft Ryan")) ||
+    voices.find(v => v.name.includes("Microsoft Guy")) ||
+    voices.find(v => /en-GB/i.test(v.lang)) ||
+    voices.find(v => /en/i.test(v.lang));
   if (preferred) u.voice = preferred;
-  u.rate = 1.05;
-  u.pitch = 0.95;
+  u.rate = 1.2;      // speed
+u.pitch = 1.0;     // natural pitch
+u.volume = 1.0;    // max volume
   window.speechSynthesis.speak(u);
 }
 
