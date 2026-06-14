@@ -1133,22 +1133,13 @@ async function dispatch() {
     }));
 
     const res = await fetch('/api/chat', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    contents: geminiHistory
-  })
-});    
-   const res = await fetch('/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-  contents: geminiHistory
-})
+        contents: geminiHistory
+      })
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1561,7 +1552,9 @@ function toast(text) {
 
 // Preload voices
 if ('speechSynthesis' in window) {
-  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => {
+    window.speechSynthesis.getVoices();
+  };
 }
 </script>
 </body>
