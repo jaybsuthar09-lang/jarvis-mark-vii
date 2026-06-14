@@ -1132,19 +1132,19 @@ async function dispatch() {
       parts: [{ text: m.content }]
     }));
 
-    const res = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: geminiHistory
-      })
-    });
+    const response = await fetch('/api/chat', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    contents: geminiHistory
+  })
+});
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-    const data = await res.json();
+const data = await response.json();
 
 const fullText =
   data.candidates?.[0]?.content?.parts?.[0]?.text ||
