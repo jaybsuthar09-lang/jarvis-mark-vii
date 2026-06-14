@@ -4,8 +4,9 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>J.A.R.V.I.S — Mark VII</title>
-  <link rel="preconnect" href="[fonts.googleapis.com](https://fonts.googleapis.com)"/>
-  <link href="[fonts.googleapis.com](https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap)" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-void: #02060d;
@@ -931,8 +932,7 @@
 /* ═══════════════════════════════════════════════════
    CONFIGURATION 
 ═══════════════════════════════════════════════════ */
-const API_KEY 
-const MODEL = 'gemini-2.5-flash';; // or gemini-2.0-flash / gemini-1.5-flash
+const MODEL = 'gemini-2.5-flash'; // or gemini-2.0-flash / gemini-1.5-flash
 const STORAGE_KEY = 'jarvis_conversation_v7';
 
 const SYSTEM = `You are JARVIS — Mark VII Neural Core. The world's most advanced personal AI, in the tradition of Stark Industries.
@@ -1132,8 +1132,15 @@ async function dispatch() {
       parts: [{ text: m.content }]
     }));
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?alt=sse&key=${API_KEY}`
-    
+    const res = await fetch('/api/chat', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    contents: geminiHistory
+  })
+});    
    const res = await fetch('/api/chat', {
       method: 'POST',
       headers: {
@@ -1146,47 +1153,13 @@ async function dispatch() {
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let fullText = '';
+    const data = await res.json();
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+const fullText =
+  data.candidates?.[0]?.content?.parts?.[0]?.text ||
+  "No response received.";
 
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const data = line.slice(6);
-        if (data.trim() === '') continue;
-
-        try {
-          const parsed = JSON.parse(data);
-          const textPart = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-          
-          if (textPart) {
-            fullText += textPart;
-            bubble.innerHTML = formatMd(fullText) + '<span class="streaming-cursor"></span>';
-            msgDiv.scrollTop = msgDiv.scrollHeight;
-          }
-        } catch (e) {} // Ignore parse errors for incomplete chunks
-      }
-    }
-
-    // Flush remaining buffer if applicable
-    if (buffer.startsWith('data: ')) {
-      try {
-        const parsed = JSON.parse(buffer.slice(6));
-        const textPart = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (textPart) fullText += textPart;
-      } catch (e) {}
-    }
-
-    bubble.innerHTML = formatMd(fullText);
+bubble.innerHTML = formatMd(fullText);
     attachCodeCopyButtons(bubble);
 
     const ms = Date.now() - t0;
