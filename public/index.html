@@ -1426,7 +1426,11 @@ function speak(text) {
   u.rate = 1.2;      // speed
 u.pitch = 1.0;     // natural pitch
 u.volume = 1.0;    // max volume
-  window.speechSynthesis.speak(u);
+ text = text
+  .replace(/\./g, '. ')
+  .replace(/:/g, ', ')
+  .replace(/;/g, ', ');
+window.speechSynthesis.speak(u);
 }
 
 /* ═══════════════════════════════════════════════════
